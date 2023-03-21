@@ -35,7 +35,10 @@ def update_db(command_bot: str, bus_number: str):
         if bus_number not in data:
             return "Автобуса нет в базе"
         else:
-            return str(data[bus_number])
+            if str(data[bus_number]).lower() == 'красный':
+                return "Это КЛАСНЫЙ!!! СУПЕЛЛЛ"
+            elif str(data[bus_number]).lower() == 'урод':
+                return "Нееееет! Это УЛООООД"
     elif command_bot == 'урод':
         data[bus_number] = 'урод'
     elif command_bot == 'красный':
