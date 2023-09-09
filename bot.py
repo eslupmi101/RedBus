@@ -4,14 +4,12 @@ import os
 
 
 from aiogram import Bot, Dispatcher, executor, types
+from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 from dotenv import load_dotenv
-
 
 load_dotenv()
 
-
 API_TOKEN = os.getenv("TOKEN")
-
 
 logging.basicConfig(level=logging.INFO)
 
@@ -19,8 +17,14 @@ logging.basicConfig(level=logging.INFO)
 bot = Bot(token=API_TOKEN)
 dp = Dispatcher(bot)
 
+OTHER_COMMANDS = ['урод', 'красный', 'удалить', 'Красные', 'Уроды']
 
-OTHER_COMMANDS = ['урод', 'красный', 'удалить']
+keyboard = ReplyKeyboardMarkup(resize_keyboard=True, selective=True)
+button_red = KeyboardButton('Красные')
+button_weird = KeyboardButton('Уроды')
+
+# Добавляем кнопки на клавиатуру
+keyboard.add(button_red, button_weird)
 
 
 def get_db() -> None:
@@ -59,7 +63,7 @@ async def send_welcome(message: types.Message):
     answer = ("Здесь можно узнать приедет ли к вам:\n"
               "Красный автобус или Урод\n"
               "Введите номер автобуса")
-    await message.reply(answer)
+    await message.reply(answer, reply_markup=keyboard)
 
 
 @dp.message_handler(commands='help')
@@ -68,27 +72,52 @@ async def send_help(message: types.Message):
               "Красный НОМЕРАВТОБУСА\n"
               "Урод НОМЕРАВТОБУСА\n"
               "Удалить НОМЕРАВТОБУСА")
-    await message.reply(answer)
+    await message.reply(answer, reply_markup=keyboard)
 
 
-@dp.message_handler()
+@dp.message_handler(
+    lambda message: message.text not in ['Красные', 'Уроды']
+)
 async def echo(message: types.Message):
-    try:
-        answer: str = ''
-        request = message.text.split(' ')
-        if (len(request) == 1
-           and request[0].isdigit()):
-            answer = update_db("какой автобус", str(request[0]))
-        elif (len(request) != 2
-              or request[0].lower() not in OTHER_COMMANDS
-              or not request[1].isdigit()):
-            await message.answer("Неверная команда")
-        else:
-            answer = update_db(request[0].lower(), str(request[1]))
-    except:
-        await message.answer("Неверная команда")
-    else:
-        await message.answer(answer)
+    answer: str = ''
+    request = message.text.split(' ')
+    if (
+        len(request) == 1
+        and request[0].isdigit()
+    ):
+        answer = update_db("какой автобус", str(request[0]))
+        await message.answer(answer, reply_markup=keyboard)
+    elif (
+        request[0].lower() in ["красный", "урод", "удалить"]
+    ):
+        answer = update_db(request[0].lower(), str(request[1]))
+        await message.answer(answer, reply_markup=keyboard)
+    elif (
+        str(request[0]) not in OTHER_COMMANDS
+    ):
+        await message.answer("Неверная команда", reply_markup=keyboard)
+
+
+@dp.message_handler(lambda message: message.text == 'Красные')
+async def red_button_handler(message: types.Message):
+    db = get_db()
+    answer: str = "Красные автобусы:\n"
+    for number, value in db.items():
+        if db[number] == "красный":
+            answer += f"{number}\n"
+
+    await message.answer(answer, reply_markup=keyboard)
+
+
+@dp.message_handler(lambda message: message.text == 'Уроды')
+async def weird_button_handler(message: types.Message):
+    db = get_db()
+    answer: str = "Уроды:\n"
+    for number, value in db.items():
+        if db[number] == "урод":
+            answer += f"{number}\n"
+
+    await message.answer(answer, reply_markup=keyboard)
 
 
 if __name__ == '__main__':
